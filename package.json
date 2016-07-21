@@ -1,6 +1,6 @@
 {
   "name": "gitlint-parser-node",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "gitlint parser for Node.js core",
   "main": "index.js",
   "scripts": {
