@@ -8,6 +8,7 @@ const releaseRE = /([\d]{4})-([\d]{2})-([\d]{2}),? Version/
 const reviewedByRE = /Reviewed-By: (.*)/
 const fixesRE = /Fixes: (.*)/
 const prUrlRE = /PR-URL: (.*)/
+const refsRE = /Refs?: (.*)/
 
 module.exports = class Parser extends Base {
   constructor(str, validator) {
@@ -15,8 +16,21 @@ module.exports = class Parser extends Base {
     this.subsystems = []
     this.fixes = []
     this.prUrl = null
+    this.refs = []
     this.reviewers = []
+    this._metaStart = 0
+    this._metaEnd = 0
     this._parse()
+  }
+
+  _setMetaStart(n) {
+    if (this._metaStart) return
+    this._metaStart = n
+  }
+
+  _setMetaEnd(n) {
+    if (n < this._metaEnd) return
+    this._metaEnd = n
   }
 
   _parse() {
@@ -35,21 +49,38 @@ module.exports = class Parser extends Base {
       const line = this.body[i]
       const reviewedBy = line.match(reviewedByRE)
       if (reviewedBy) {
+        this._setMetaStart(i)
+        this._setMetaEnd(i)
         this.reviewers.push(reviewedBy[1])
         continue
       }
 
       const fixes = line.match(fixesRE)
       if (fixes) {
+        this._setMetaStart(i)
+        this._setMetaEnd(i)
         this.fixes.push(fixes[1])
         continue
       }
 
       const prUrl = line.match(prUrlRE)
       if (prUrl) {
+        this._setMetaStart(i)
+        this._setMetaEnd(i)
         this.prUrl = prUrl[1]
         continue
       }
+
+      const refs = line.match(refsRE)
+      if (refs) {
+        this._setMetaStart(i)
+        this._setMetaEnd(i)
+        this.refs.push(refs[1])
+        continue
+      }
+
+      if (this._metaStart && !this._metaEnd)
+        this._setMetaEnd(i)
     }
   }
 
@@ -73,12 +104,17 @@ module.exports = class Parser extends Base {
     , author: this.author
     , date: this.date
     , fixes: this.fixes
+    , refs: this.refs
     , prUrl: this.prUrl
     , reviewers: this.reviewers
     , body: this.body
     , revert: this.isRevert()
     , release: this.isReleaseCommit()
     , working: this.isWorkingCommit()
+    , metadata: {
+        start: this._metaStart
+      , end: this._metaEnd
+      }
     }
   }
 }
